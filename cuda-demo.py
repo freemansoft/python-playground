@@ -24,37 +24,47 @@ WARM_ITER = 5
 # device=True                    Installed on device.  callable from the device. 
 # device=False (default, Global) Installed on device.  Only callable from host
 
+# standard python speed
+def math_cpu_nojit(param_triple):
+   return math.log(param_triple[0])*math.log(param_triple[1])*math.log(param_triple[2])
+
 # jit gives 20x performance
 @jit
-def math_on_cpu(param_triple):
+def math_cpu_jit(param_triple):
    return math.log(param_triple[0])*math.log(param_triple[1])*math.log(param_triple[2])
 
 # cuda 'device' functions can return values
 @cuda.jit('float64(float64[:])', device=True)
-def math_on_gpu(param_triple):
+def math_gpu_jit(param_triple):
    return math.log(param_triple[0])*math.log(param_triple[1])*math.log(param_triple[2])
 
 # -------------------------------------------------------------------------------
 #
 # -------------------------------------------------------------------------------
 
+def calc_cpu_nojit_serial(result, iteration_count, all_params):
+    # prange tells jit this can be executed in parallel
+    for i in range(iteration_count):
+        param_array = all_params[i]
+        result[i] = math_cpu_jit(param_array)
+
 # normal function to run on cpu
 # Note: JIT changes the way divide by zero is exposed - returns error set
 @jit(parallel=False)
-def calc_on_cpu_serial(result, iteration_count, all_params):
+def calc_cpu_jit_serial(result, iteration_count, all_params):
     # prange tells jit this can be executed in parallel
     for i in prange(iteration_count):
         param_array = all_params[i]
-        result[i] = math_on_cpu(param_array)
+        result[i] = math_cpu_jit(param_array)
 
 # normal function to run on cpu
 # Note: JIT changes the way divide by zero is exposed - returns error set
 @jit(parallel=True)
-def calc_on_cpu_parallel(result, iteration_count, all_params):
+def calc_cpu_jit_parallel(result, iteration_count, all_params):
     # prange tells jit this can be executed in parallel
     for i in prange(iteration_count):
         param_array = all_params[i]
-        result[i] = math_on_cpu(param_array)
+        result[i] = math_cpu_jit(param_array)
 
 # assumes this was called as part of a matrix call
 # cuda global function cannot return values
@@ -66,7 +76,7 @@ def calc_on_gpu(result, iteration_count, all_params):
     index = tx + ty * bw 
     if index < iteration_count: 
         param_array = all_params[index]
-        result[index] = math_on_gpu(param_array)
+        result[index] = math_gpu_jit(param_array)
 
 # sums a vector when called from the CPU
 @cuda.reduce
@@ -77,20 +87,26 @@ def reduce_on_gpu(a,b):
 #
 # -------------------------------------------------------------------------------
 
-# exist to have same pattern as GPU. No setup required
-def cpu_driver_serial(iteration_count, all_params):
+# exist to have same pattern as GPU. 
+def driver_cpu_nojit_serial(iteration_count, all_params):
     result = np.zeros(iteration_count, dtype=atype)
-    calc_on_cpu_serial(result,iteration_count,all_params)
+    calc_cpu_nojit_serial(result,iteration_count,all_params)
     return result
 
-# exist to have same pattern as GPU. No setup required
-def cpu_driver_parallel(iteration_count, all_params):
+# exist to have same pattern as GPU. 
+def driver_cpu_jit_serial(iteration_count, all_params):
     result = np.zeros(iteration_count, dtype=atype)
-    calc_on_cpu_parallel(result,iteration_count,all_params)
+    calc_cpu_jit_serial(result,iteration_count,all_params)
+    return result
+
+# exist to have same pattern as GPU. 
+def driver_cpu_jit_parallel(iteration_count, all_params):
+    result = np.zeros(iteration_count, dtype=atype)
+    calc_cpu_jit_parallel(result,iteration_count,all_params)
     return result
 
 # map data into device memory and invoke and copy back
-def gpu_driver(iteration_count, all_params):
+def driver_gpu(iteration_count, all_params):
     # calculate matrix size
     # rtx 2060 super has 34 SMs at 64-P32, 32-FP64 cores each for 2176 processors
     # CUDA sizing https://docs.nvidia.com/cuda/cuda-occupancy-calculator/CUDA_Occupancy_Calculator.xls
@@ -138,11 +154,13 @@ def do_run(iterations, the_func, label, client=None):
 if __name__=="__main__": 
     
     print("")
+    do_run(WARM_ITER,     driver_gpu,              "GPU JIT warmup:   ")
+    do_run(numIterations, driver_gpu,              "GPU grid:         ")
     # run cpu twice - jit overhead on first run
-    do_run(WARM_ITER,     cpu_driver_serial,   "CPU: JIT warmup ")
-    do_run(WARM_ITER,     cpu_driver_parallel, "CPU: JIT warmup ")
-    do_run(numIterations, cpu_driver_serial,   "CPU serial:    ")
-    do_run(numIterations, cpu_driver_parallel, "CPU parallel:  ")
-    do_run(WARM_ITER,     gpu_driver,          "GPU JIT warmup:")
-    do_run(numIterations, gpu_driver,          "GPU grid:      ")
+    do_run(WARM_ITER,     driver_cpu_jit_serial,   "CPU: JIT warmup   ")
+    do_run(WARM_ITER,     driver_cpu_jit_parallel, "CPU: JIT warmup   ")
+    do_run(numIterations, driver_cpu_jit_serial,   "CPU jit serial:   ")
+    do_run(numIterations, driver_cpu_jit_parallel, "CPU jit parallel: ")
 
+    do_run(numIterations, driver_cpu_nojit_serial, "CPU serial nojit: ")
+ 

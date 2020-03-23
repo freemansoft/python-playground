@@ -38,9 +38,13 @@ def calc_dask_worker_threads(client):
 #
 # -------------------------------------------------------------------------------
 
+# standard python speed
+def math_cpu_nojit(param_triple):
+   return math.log(param_triple[0])*math.log(param_triple[1])*math.log(param_triple[2])
+
 # jit gives 20x performance
 @jit
-def math_on_cpu(param_triple):
+def math_cpu_jit(param_triple):
    return math.log(param_triple[0])*math.log(param_triple[1])*math.log(param_triple[2])
 
 
@@ -48,42 +52,55 @@ def math_on_cpu(param_triple):
 #
 # -------------------------------------------------------------------------------
 
+def calc_cpu_nojit_serial(result, iteration_count, all_params):
+    # prange tells jit this can be executed in parallel
+    for i in range(iteration_count):
+        param_array = all_params[i]
+        result[i] = math_cpu_jit(param_array)
+
 # normal function to run on cpu
 # Note: JIT changes the way divide by zero is exposed - returns error set
 @jit(parallel=False)
-def calc_on_cpu_serial(result, iteration_count, all_params):
+def calc_cpu_jit_serial(result, iteration_count, all_params):
     # prange tells jit this can be executed in parallel
     for i in prange(iteration_count):
         param_array = all_params[i]
-        result[i] = math_on_cpu(param_array)
+        result[i] = math_cpu_jit(param_array)
 
 # normal function to run on cpu
 # Note: JIT changes the way divide by zero is exposed - returns error set
 @jit(parallel=True)
-def calc_on_cpu_parallel(result, iteration_count, all_params):
+def calc_cpu_jit_parallel(result, iteration_count, all_params):
     # prange tells jit this can be executed in parallel
     for i in prange(iteration_count):
         param_array = all_params[i]
-        result[i] = math_on_cpu(param_array)
+        result[i] = math_cpu_jit(param_array)
 
 
 # -------------------------------------------------------------------------------
 #
 # -------------------------------------------------------------------------------
 
-def cpu_driver_serial(iteration_count, all_params):
+# exist to have same pattern as GPU. 
+def driver_cpu_nojit_serial(iteration_count, all_params):
     result = np.zeros(iteration_count, dtype=atype)
-    calc_on_cpu_serial(result,iteration_count,all_params)
+    calc_cpu_nojit_serial(result,iteration_count,all_params)
     return result
-def cpu_driver_parallel(iteration_count, all_params):
+# exist to have same pattern as GPU. 
+def driver_cpu_jit_serial(iteration_count, all_params):
     result = np.zeros(iteration_count, dtype=atype)
-    calc_on_cpu_parallel(result,iteration_count,all_params)
+    calc_cpu_jit_serial(result,iteration_count,all_params)
     return result
-# driver for each node - one in each task
+# exist to have same pattern as GPU. 
+def driver_cpu_jit_parallel(iteration_count, all_params):
+    result = np.zeros(iteration_count, dtype=atype)
+    calc_cpu_jit_parallel(result,iteration_count,all_params)
+    return result
+# DASK driver for each node - one in each task
 def dask_driver_node(all_params):
     iteration_count = all_params.shape[0]
     result = np.zeros(iteration_count, dtype=atype)
-    calc_on_cpu_serial(result,iteration_count,all_params)
+    calc_cpu_jit_serial(result,iteration_count,all_params)
     return result
 
 # master dask adapter 
@@ -135,7 +152,8 @@ if __name__=="__main__":
     print("")
     print("")
 
-    # , dashboard_address=None
+    # open all of these with dashboards. Open and close in sequence so no conflicts
+    # Can open all at once if disable dashboard:  dashboard_address=None
     client_threaded_parallel =      Client(processes=False)
     print("                             DASK client_threaded          " , client_threaded_parallel)
     do_run(numIterations, dask_driver, "DASK thrd multi:", client=client_threaded_parallel)
@@ -150,9 +168,7 @@ if __name__=="__main__":
 
     client_processes_parallel =     Client(processes=True)
     print("                             DASK client_processess        " , client_processes_parallel)
-    sleep(10)
     do_run(numIterations, dask_driver, "DASK proc mult: ", client=client_processes_parallel)
-    sleep(60)
     client_processes_parallel.close()
     print("")
 
@@ -162,8 +178,10 @@ if __name__=="__main__":
     client_processes_single.close()
     print("")
 
-    do_run(WARM_ITER,     cpu_driver_serial,   "CPU: JIT warmup ")
-    do_run(WARM_ITER,     cpu_driver_parallel, "CPU: JIT warmup ")
-    do_run(numIterations, cpu_driver_serial,   "CPU serial:    ")
-    do_run(numIterations, cpu_driver_parallel, "CPU parallel:  ")
+    # do small runs to warm up JIT
+    do_run(WARM_ITER,     driver_cpu_jit_serial,   "CPU JIT warmup:   ")
+    do_run(WARM_ITER,     driver_cpu_jit_parallel, "CPU JIT warmup:   ")
+    do_run(numIterations, driver_cpu_jit_serial,   "CPU jit serial:   ")
+    do_run(numIterations, driver_cpu_jit_parallel, "CPU jit parallel: ")
 
+    do_run(numIterations, driver_cpu_nojit_serial, "CPU nojit serial: ")
