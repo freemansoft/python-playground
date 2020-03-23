@@ -17,22 +17,23 @@
 
 ## Test runs
 ### Sample times
+cuda-demo.py
 ```
-GPU grid:          0.1630   Iterations: 10,000,000  dtype= float64 numcalc: sum( 10,000,000 ): 34986983045.74297
-CPU jit parallel:  0.0922   Iterations: 10,000,000  dtype= float64 numcalc: sum( 10,000,000 ): 34986983045.74297
-CPU jit serial:    1.1733   Iterations: 10,000,000  dtype= float64 numcalc: sum( 10,000,000 ): 34986983045.74297
-CPU serial nojit:  12.4751  Iterations: 10,000,000  dtype= float64 numcalc: sum( 10,000,000 ): 34986983045.74297
+GPU grid:            0.1630   Iterations: 10,000,000  dtype= float64 numcalc: sum( 10,000,000 ): 34986983045.74297
+CPU jit parallel:    0.0922   Iterations: 10,000,000  dtype= float64 numcalc: sum( 10,000,000 ): 34986983045.74297
+CPU jit serial:      1.1733   Iterations: 10,000,000  dtype= float64 numcalc: sum( 10,000,000 ): 34986983045.74297
+CPU serial nojit:    12.4751  Iterations: 10,000,000  dtype= float64 numcalc: sum( 10,000,000 ): 34986983045.74297
 ```
+dask-demo.py
+```
+DASK jit thrd multi   2.5249   Iterations: 10,000,000  dtype= float64 numcalc: sum( 10,000,000 ): 34986983045.74297
+DASK jit thrd sing:   1.7951   Iterations: 10,000,000  dtype= float64 numcalc: sum( 10,000,000 ): 34986983045.74297
+DASK jit proc mult:   1.9432   Iterations: 10,000,000  dtype= float64 numcalc: sum( 10,000,000 ): 34986983045.74297
+DASK jit proc sing:   3.8063   Iterations: 10,000,000  dtype= float64 numcalc: sum( 10,000,000 ): 34986983045.74297
 
-```
-DASK thrd multi:   2.5249   Iterations: 10,000,000  dtype= float64 numcalc: sum( 10,000,000 ): 34986983045.74297
-DASK thrd sing:    1.7951   Iterations: 10,000,000  dtype= float64 numcalc: sum( 10,000,000 ): 34986983045.74297
-DASK proc mult:    1.9432   Iterations: 10,000,000  dtype= float64 numcalc: sum( 10,000,000 ): 34986983045.74297
-DASK proc sing:    3.8063   Iterations: 10,000,000  dtype= float64 numcalc: sum( 10,000,000 ): 34986983045.74297
-
-CPU jit parallel:  0.0922   Iterations: 10,000,000  dtype= float64 numcalc: sum( 10,000,000 ): 34986983045.74297
-CPU jit serial:    1.1381   Iterations: 10,000,000  dtype= float64 numcalc: sum( 10,000,000 ): 34986983045.74297
-CPU nojit serial:  10.7825  Iterations: 10,000,000  dtype= float64 numcalc: sum( 10,000,000 ): 34986983045.74297
+CPU jit parallel:     0.0922   Iterations: 10,000,000  dtype= float64 numcalc: sum( 10,000,000 ): 34986983045.74297
+CPU jit serial:       1.1381   Iterations: 10,000,000  dtype= float64 numcalc: sum( 10,000,000 ): 34986983045.74297
+CPU nojit serial:     10.7825  Iterations: 10,000,000  dtype= float64 numcalc: sum( 10,000,000 ): 34986983045.74297
 ```
 ### DASK threading
 * Multi-threaded: 8 processors 32 threads
