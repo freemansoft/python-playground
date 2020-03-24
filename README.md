@@ -2,8 +2,13 @@
 
 
 
-# cuda-demo numbers
+# cuda-demo and dask-demo numbers
+These numbers represent the amount of time it takes to iterate 10,000,000 times using various approaches
 
+## Program Structure
+The various approaches are structured as similar as possible without walking away from implementation specific optimizations.
+
+![Program Flow](./images_folder/cuda-dask-demo.jpg)
 ## Algorithm
 * 10,000,000 long vector [[a,b,c],[a,b,c],...]
 * Calculate `math.log(param_triple[0])*math.log(param_triple[1])*math.log(param_triple[2])`
